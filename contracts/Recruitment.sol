@@ -148,6 +148,10 @@ contract Recruitment is Ownable {
     companyList[msg.sender] = company;
   }
 
+  /**
+    * @notice Flags a job as deleted. Sets the status of a job from `true` to `false`
+    * @param jobId The ID of a job to be marked as deleted.
+  */
   function deleteJob(uint256 jobId) external {
     FrontDoorStructs.Job memory job = jobList[jobId];
     if (job.creator != msg.sender) revert Errors.OnlyJobCreatorAllowedToDelete(); 
@@ -156,6 +160,11 @@ contract Recruitment is Ownable {
     jobList[jobId] = job;
   }
 
+  /**
+    * @notice Gets all the jobs (starting from an ID upto the limit)
+    * @param startId The offset id of job to be fetched from the array.
+    * @return FrontDoorStructs.Job[] an Array of Job struct
+  */
   function getAllJobs(uint256 startId) external view returns(FrontDoorStructs.Job[] memory){
 
     if (startId > jobIdCounter.current()) revert Errors.JobListingLimitExceed();
@@ -176,6 +185,12 @@ contract Recruitment is Ownable {
 
   }
 
+  /**
+    * @notice Gets all the jobs created by a Company(starting from an ID upto the limit)
+    * @param startId The offset id of job to be fetched from the array.
+    * @param companyWallet The wallet address of the company
+    * @return FrontDoorStructs.Job[] an Array of Job struct
+  */
   function getAllJobsOfCompany(uint256 startId, address companyWallet) external view returns (FrontDoorStructs.Job[] memory) {
     if (startId > jobIdCounter.current()) revert Errors.JobListingLimitExceed();
     uint256 jobsFetched = 0;
@@ -194,6 +209,10 @@ contract Recruitment is Ownable {
     return jobArray;
   }
 
+  /**
+    * @notice Updates the job listing limit (just in case if it is required to increase or decrease)
+    * @param newLimit The number of jobs wanted in pagination
+  */
   function updateJobListingLimit(uint256 newLimit) external onlyOwner {
     jobListingLimit = newLimit;
   }
