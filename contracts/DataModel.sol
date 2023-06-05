@@ -30,6 +30,7 @@ library FrontDoorStructs {
     struct Job {
         uint256 id;
         uint256 bounty;
+        address creator;
     }
 
     struct Referral{

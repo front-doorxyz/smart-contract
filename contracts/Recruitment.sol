@@ -137,7 +137,7 @@ contract Recruitment {
   */
   function registerJob(uint256 bounty) external {
     uint256 jobId = jobIdCounter.current();
-    FrontDoorStructs.Job memory job = FrontDoorStructs.Job(jobId, bounty);
+    FrontDoorStructs.Job memory job = FrontDoorStructs.Job(jobId, bounty, msg.sender);
     jobList[jobId] = job;
     jobIdCounter.increment();
   }
@@ -204,6 +204,9 @@ contract Recruitment {
   function getReferral(uint256 refId) external view returns(FrontDoorStructs.Referral memory) {
     return referralList[refId];
   }
+
+
+
 
   event ReferralScoreSubmitted(address senderAddress, address referrerWallet, uint256 score);
   mapping(address => FrontDoorStructs.ReferralScore[]) public referralScores;
