@@ -2,13 +2,14 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import { FrontDoorStructs } from "./DataModel.sol";
 import { Errors } from "./Errors.sol";
 
-contract Recruitment {
+contract Recruitment is Ownable {
   event PercentagesCompleted(address indexed sender, uint8 month1RefundPct, uint8 month2RefundPct, uint8 month3RefundPct);
   event DepositCompleted(address indexed sender, uint256 amount);
-  address owner;
+  //address owner;
   mapping(bytes32 => address) public whitelistedTokens;
   mapping(bytes32 => uint8) public whitelistedTokenDecimals;
   mapping(address => mapping(bytes32 => uint256)) public accountBalances;
@@ -19,19 +20,21 @@ contract Recruitment {
   mapping(address => FrontDoorStructs.Candidate) public candidateList;
   mapping(address => FrontDoorStructs.Referee) public refereeList;
   mapping(address => FrontDoorStructs.Referrer) public referrerList;
+  mapping(address => FrontDoorStructs.Company) public companyList;
   mapping(uint256 => FrontDoorStructs.Job) public jobList;
   mapping(address => uint256[]) public referralIndex;
   mapping(uint256 => FrontDoorStructs.Referral) public referralList;
   using Counters for Counters.Counter;
   Counters.Counter private jobIdCounter;
   Counters.Counter private referralCounter;
+  uint256 jobListingLimit = 50;
   uint256 initialAmountUSD = 1000;
   constructor() {
-    owner = msg.sender;
+    //owner = msg.sender;
   }
 
-  function whitelistToken(bytes32 symbol, address tokenAddress, uint8 decimals) external {
-    require(msg.sender == owner, 'This function is not public');
+  function whitelistToken(bytes32 symbol, address tokenAddress, uint8 decimals) external onlyOwner {
+    //require(msg.sender == owner, 'This function is not public');
     whitelistedTokenDecimals[symbol] = decimals;
     whitelistedTokens[symbol] = tokenAddress;
   }
@@ -137,11 +140,63 @@ contract Recruitment {
   */
   function registerJob(uint256 bounty) external {
     uint256 jobId = jobIdCounter.current();
-    FrontDoorStructs.Job memory job = FrontDoorStructs.Job(jobId, bounty, msg.sender);
+    FrontDoorStructs.Job memory job = FrontDoorStructs.Job(jobId, bounty, true, msg.sender);
     jobList[jobId] = job;
     jobIdCounter.increment();
+    FrontDoorStructs.Company memory company = companyList[msg.sender];
+    company.jobsCreated++;
+    companyList[msg.sender] = company;
   }
 
+  function deleteJob(uint256 jobId) external {
+    FrontDoorStructs.Job memory job = jobList[jobId];
+    if (job.creator != msg.sender) revert Errors.OnlyJobCreatorAllowedToDelete(); 
+    if (job.status == false) revert Errors.JobAlreadyDeleted();
+    job.status = false;
+    jobList[jobId] = job;
+  }
+
+  function getAllJobs(uint256 startId) external view returns(FrontDoorStructs.Job[] memory){
+
+    if (startId > jobIdCounter.current()) revert Errors.JobListingLimitExceed();
+
+    uint256 jobsFetched = 0;
+
+    FrontDoorStructs.Job[] memory jobArray;
+    for (uint i=startId; i<jobIdCounter.current(); i++) {
+      if (jobList[i].status == true) {
+        jobArray[jobsFetched] = jobList[i];
+        jobsFetched++;
+      }
+      if (jobsFetched >= jobListingLimit) {
+        return jobArray;
+      }
+    }
+    return jobArray;
+
+  }
+
+  function getAllJobsOfCompany(uint256 startId, address companyWallet) external view returns (FrontDoorStructs.Job[] memory) {
+    if (startId > jobIdCounter.current()) revert Errors.JobListingLimitExceed();
+    uint256 jobsFetched = 0;
+    FrontDoorStructs.Job[] memory jobArray;
+    for (uint i=startId; i<jobIdCounter.current(); i++) {
+      if (jobList[i].creator == companyWallet) {
+        if (jobList[i].status == true) {
+          jobArray[jobsFetched] = jobList[i];
+          jobsFetched++;
+        }
+      }
+      if (jobsFetched >= jobListingLimit) {
+        return jobArray;
+      }
+    }
+    return jobArray;
+  }
+
+  function updateJobListingLimit(uint256 newLimit) external onlyOwner {
+    jobListingLimit = newLimit;
+  }
   /**
     * @notice Getter function of Job.
     * @param jobId The ID of a job to fetch from the mapping

@@ -30,6 +30,7 @@ library FrontDoorStructs {
     struct Job {
         uint256 id;
         uint256 bounty;
+        bool status;
         address creator;
     }
 
@@ -39,6 +40,11 @@ library FrontDoorStructs {
         Referrer referrer;
         Referee referee;
         Job job;
+    }
+
+    struct Company{
+        address wallet;
+        uint256 jobsCreated;
     }
 
     struct CompanyScore{
